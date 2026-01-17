@@ -3,216 +3,231 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>SYNTH-BIO INTERFACE</title>
+    <title>SYNTH-PROTOTYPE V3</title>
     <script src="https://cdn.jsdelivr.net/npm/@mediapipe/face_mesh"></script>
     <script src="https://cdn.jsdelivr.net/npm/@tensorflow/tfjs"></script>
     <style>
         body {
             margin: 0;
             padding: 0;
-            background-color: #050505;
+            background-color: #010101;
             display: flex;
             justify-content: center;
             align-items: center;
             height: 100vh;
             overflow: hidden;
-            perspective: 1000px;
+            perspective: 2000px;
         }
 
-        .noise-overlay {
-            position: fixed;
+        .scene {
+            width: 500px;
+            height: 700px;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            transform-style: preserve-3d;
+        }
+
+        .android-head {
+            position: relative;
+            width: 380px;
+            height: 520px;
+            transform-style: preserve-3d;
+            transition: transform 0.2s cubic-bezier(0.2, 0, 0.2, 1);
+        }
+
+        .skull-base {
+            position: absolute;
+            width: 100%;
+            height: 100%;
+            background: linear-gradient(145deg, #1e1e20, #0a0a0b);
+            border-radius: 150px 150px 220px 220px;
+            border: 1px solid #2a2a2c;
+            box-shadow: 0 50px 100px rgba(0,0,0,1);
+            overflow: hidden;
+        }
+
+        .forehead-panel {
+            position: absolute;
+            top: 0;
+            width: 100%;
+            height: 160px;
+            background: #161618;
+            border-bottom: 2px solid #000;
+            clip-path: polygon(0 0, 100% 0, 100% 70%, 55% 100%, 45% 100%, 0 70%);
+        }
+
+        .mind-socket {
+            position: absolute;
+            top: 35px;
+            left: 50%;
+            transform: translateX(-50%);
+            width: 24px;
+            height: 36px;
+            background: #000;
+            border-radius: 50%;
+            border: 1px solid #333;
+            box-shadow: inset 0 0 10px #00d4ff33;
+        }
+
+        .eye-region {
+            position: absolute;
+            top: 180px;
+            width: 130px;
+            height: 80px;
+            background: #000;
+            border-radius: 60px 60px 100px 100px;
+            overflow: hidden;
+            border: 2px solid #1a1a1b;
+        }
+
+        .left { left: 45px; }
+        .right { right: 45px; }
+
+        .lid {
+            position: absolute;
             top: 0;
             left: 0;
             width: 100%;
             height: 100%;
-            background: url('https://grainy-gradients.vercel.app/noise.svg');
-            opacity: 0.05;
-            pointer-events: none;
-            z-index: 10;
+            background: #1a1a1c;
+            z-index: 5;
+            transition: transform 0.6s cubic-bezier(0.4, 0, 0.2, 1);
+            border-bottom: 1px solid #333;
         }
 
-        .face-container {
-            position: relative;
-            width: 450px;
-            height: 550px;
-            background: radial-gradient(circle at 50% 40%, #2a2a2e 0%, #121214 70%, #080808 100%);
-            border-radius: 150px 150px 220px 220px;
-            box-shadow: 
-                0 50px 100px rgba(0,0,0,0.9),
-                inset 0 2px 5px rgba(255,255,255,0.1),
-                inset 0 -10px 30px rgba(0,0,0,0.8);
-            display: flex;
-            justify-content: center;
-            border: 1px solid #1a1a1c;
+        .eye-region.open .lid {
+            transform: translateY(-100%);
         }
-
-        .brow-ridge {
-            position: absolute;
-            top: 100px;
-            width: 100%;
-            height: 60px;
-            background: linear-gradient(to bottom, transparent, rgba(0,0,0,0.4));
-            border-radius: 50%;
-            filter: blur(5px);
-        }
-
-        .eye-socket {
-            position: absolute;
-            top: 160px;
-            width: 120px;
-            height: 80px;
-            background: #000;
-            border-radius: 50% 50% 45% 45%;
-            box-shadow: 
-                inset 0 10px 20px rgba(0,0,0,1),
-                0 1px 1px rgba(255,255,255,0.05);
-            display: flex;
-            justify-content: center;
-            align-items: center;
-            overflow: hidden;
-        }
-
-        .eye-left { left: 60px; }
-        .eye-right { right: 60px; }
 
         .iris {
-            width: 65px;
-            height: 65px;
-            background: 
-                radial-gradient(circle at center, #00d4ff 0%, #0055ff 40%, #001133 80%);
+            width: 70px;
+            height: 70px;
+            background: radial-gradient(circle, #00f2ff 0%, #0044ff 50%, #000 100%);
             border-radius: 50%;
-            position: relative;
+            position: absolute;
+            top: 5px;
+            left: 30px;
             display: flex;
             justify-content: center;
             align-items: center;
-            box-shadow: 0 0 25px rgba(0, 85, 255, 0.4);
-            transition: transform 0.08s ease-out;
+            opacity: 0;
+            transition: opacity 0.5s ease;
         }
 
-        .iris::before {
-            content: '';
-            position: absolute;
-            width: 100%;
-            height: 100%;
-            background: repeating-conic-gradient(from 0deg, transparent 0deg 10deg, rgba(0,0,0,0.1) 11deg 20deg);
-            border-radius: 50%;
+        .eye-region.open .iris {
+            opacity: 1;
         }
 
         .pupil {
-            width: 24px;
-            height: 24px;
+            width: 25px;
+            height: 25px;
             background: #000;
             border-radius: 50%;
-            box-shadow: 0 0 10px rgba(0,0,0,0.8);
-            position: relative;
-            overflow: hidden;
+            border: 1px solid #00d4ff;
+            box-shadow: 0 0 15px rgba(0, 212, 255, 0.5);
         }
 
-        .lens-glare {
+        .cheek-line {
             position: absolute;
-            top: 15%;
-            left: 15%;
-            width: 50%;
-            height: 50%;
-            background: linear-gradient(135deg, rgba(255,255,255,0.4) 0%, transparent 60%);
-            border-radius: 50%;
-            pointer-events: none;
-        }
-
-        .cheek-detail {
-            position: absolute;
-            top: 300px;
-            width: 80px;
-            height: 2px;
-            background: rgba(255,255,255,0.02);
-            box-shadow: 0 1px 0 rgba(0,0,0,0.5);
-        }
-
-        .cheek-l { left: 40px; transform: rotate(15deg); }
-        .cheek-r { right: 40px; transform: rotate(-15deg); }
-
-        #video-feedback {
-            position: fixed;
-            bottom: 30px;
-            left: 30px;
+            top: 280px;
             width: 120px;
-            border-radius: 10px;
-            opacity: 0.3;
-            filter: grayscale(1) contrast(1.2);
-            transform: scaleX(-1);
-            border: 1px solid rgba(255,255,255,0.1);
+            height: 1px;
+            background: rgba(255,255,255,0.05);
         }
 
-        .interface-text {
+        .cl-l { left: 30px; transform: rotate(15deg); }
+        .cl-r { right: 30px; transform: rotate(-15deg); }
+
+        #cam {
+            position: fixed;
+            bottom: 20px;
+            right: 20px;
+            width: 120px;
+            opacity: 0.2;
+            transform: scaleX(-1);
+            border-radius: 5px;
+        }
+
+        .system-status {
             position: absolute;
-            bottom: 40px;
-            color: #444;
+            bottom: 60px;
+            width: 100%;
+            text-align: center;
             font-family: monospace;
+            color: #444;
             font-size: 10px;
-            letter-spacing: 3px;
-            text-transform: uppercase;
+            letter-spacing: 5px;
         }
     </style>
 </head>
 <body>
 
-<div class="noise-overlay"></div>
-
-<div class="face-container">
-    <div class="brow-ridge"></div>
-    
-    <div class="eye-socket eye-left">
-        <div id="iris-l" class="iris">
-            <div class="pupil">
-                <div class="lens-glare"></div>
+<div class="scene">
+    <div class="android-head" id="head">
+        <div class="skull-base">
+            <div class="forehead-panel">
+                <div class="mind-socket"></div>
             </div>
+            
+            <div class="eye-region left" id="eye-l">
+                <div class="lid"></div>
+                <div class="iris" id="iris-l">
+                    <div class="pupil"></div>
+                </div>
+            </div>
+
+            <div class="eye-region right" id="eye-r">
+                <div class="lid"></div>
+                <div class="iris" id="iris-r">
+                    <div class="pupil"></div>
+                </div>
+            </div>
+
+            <div class="cheek-line cl-l"></div>
+            <div class="cheek-line cl-r"></div>
+            
+            <div class="system-status" id="status">DORMANT</div>
         </div>
     </div>
-
-    <div class="eye-socket eye-right">
-        <div id="iris-r" class="iris">
-            <div class="pupil">
-                <div class="lens-glare"></div>
-            </div>
-        </div>
-    </div>
-
-    <div class="cheek-detail cheek-l"></div>
-    <div class="cheek-detail cheek-r"></div>
-
-    <div class="interface-text" id="log">AWAITING BIOMETRIC SCAN</div>
 </div>
 
-<video id="video-feedback" autoplay playsinline></video>
+<video id="cam" autoplay playsinline></video>
 
 <script>
-    const video = document.getElementById('video-feedback');
-    const log = document.getElementById('log');
+    const head = document.getElementById('head');
+    const eyeL = document.getElementById('eye-l');
+    const eyeR = document.getElementById('eye-r');
     const irisL = document.getElementById('iris-l');
     const irisR = document.getElementById('iris-r');
+    const status = document.getElementById('status');
+    const video = document.getElementById('cam');
 
-    function updateEyes(results) {
+    function handleTracking(results) {
         if (results.multiFaceLandmarks && results.multiFaceLandmarks.length > 0) {
             const face = results.multiFaceLandmarks[0];
             const nose = face[1];
 
-            const sensitivityX = 70;
-            const sensitivityY = 45;
+            eyeL.classList.add('open');
+            eyeR.classList.add('open');
+            status.innerText = "ACTIVE TRACKING";
+            status.style.color = "#00d4ff";
 
-            const targetX = -(nose.x - 0.5) * sensitivityX;
-            const targetY = (nose.y - 0.4) * sensitivityY;
+            const rotY = (nose.x - 0.5) * 40;
+            const rotX = -(nose.y - 0.5) * 30;
+            head.style.transform = `rotateY(${rotY}deg) rotateX(${rotX}deg)`;
 
-            const jitterX = (Math.random() - 0.5) * 1.5;
-            const jitterY = (Math.random() - 0.5) * 1.5;
+            const eyeX = -(nose.x - 0.5) * 40;
+            const eyeY = (nose.y - 0.5) * 25;
+            irisL.style.transform = `translate(${eyeX}px, ${eyeY}px)`;
+            irisR.style.transform = `translate(${eyeX}px, ${eyeY}px)`;
 
-            irisL.style.transform = `translate(${targetX + jitterX}px, ${targetY + jitterY}px)`;
-            irisR.style.transform = `translate(${targetX + jitterX}px, ${targetY + jitterY}px)`;
-            
-            log.innerText = "SUBJECT VERIFIED // TRACKING ACTIVE";
-            log.style.color = "#00d4ff";
         } else {
-            log.innerText = "SIGNAL LOST // REACQUIRING...";
-            log.style.color = "#662222";
+            eyeL.classList.remove('open');
+            eyeR.classList.remove('open');
+            status.innerText = "DORMANT";
+            status.style.color = "#444";
+            head.style.transform = `rotateY(0deg) rotateX(0deg)`;
         }
     }
 
@@ -223,28 +238,26 @@
     faceMesh.setOptions({
         maxNumFaces: 1,
         refineLandmarks: true,
-        minDetectionConfidence: 0.6,
-        minTrackingConfidence: 0.6
+        minDetectionConfidence: 0.5,
+        minTrackingConfidence: 0.5
     });
 
-    faceMesh.onResults(updateEyes);
+    faceMesh.onResults(handleTracking);
 
-    async function init() {
-        const stream = await navigator.mediaDevices.getUserMedia({
-            video: { facingMode: "user" }
-        });
+    async function setup() {
+        const stream = await navigator.mediaDevices.getUserMedia({ video: true });
         video.srcObject = stream;
         video.onloadedmetadata = () => {
-            predict();
+            run();
         };
     }
 
-    async function predict() {
+    async function run() {
         await faceMesh.send({image: video});
-        requestAnimationFrame(predict);
+        requestAnimationFrame(run);
     }
 
-    init();
+    setup();
 </script>
 
 </body>
